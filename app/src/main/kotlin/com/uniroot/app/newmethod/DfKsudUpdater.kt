@@ -194,6 +194,10 @@ object DfKsudUpdater {
             s.vermagic = vermagicOf(s.payload)
             s.sha = sha256Hex(s.payload)
             if (s.vermagic.isNotEmpty()) {
+                if (containsBytes(s.payload, "susfs".toByteArray())) {
+                    s.kind = "susfs_ko"
+                    continue
+                }
                 s.kind = "ko"
                 val k = kmiFromVermagic(s.vermagic)
                 if (k.isNotEmpty()) { s.kmi = k; s.how = "vermagic" }
@@ -335,7 +339,8 @@ object DfKsudUpdater {
                     .recoverCatching { httpGet("$refBase/${kmi}_kernelsu.ko") }
                     .getOrNull()
             } else {
-                runCatching { httpGet("$refBase/aarch64-${kmi}_kernelsu.ko") }
+                runCatching { httpGet("$refBase/aarch64_${kmi}_kernelsu.ko") }
+                    .recoverCatching { httpGet("$refBase/aarch64-${kmi}_kernelsu.ko") }
                     .recoverCatching { httpGet("$refBase/${kmi}_kernelsu.ko") }
                     .getOrNull()
             }
