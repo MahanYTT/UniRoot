@@ -52,17 +52,21 @@ object GhostSamRunner {
                 ?: return fail(reporter, onProgress, "missing asset dfr_lkm-$kmi.ko (not bundled for this KMI)")
             // Profil ksud Next choisi sur l'accueil (KsudNextProfiles, ex.
             // 3.3.0 / 3.4.0) ; fallback: le ksud Next GhostSam embarqué.
-            val ksudAsset = if (ksuNext)
-                KsudNextProfiles.selectedAsset(context) ?: "$ASSET_PREFIX/ksud/ksud-next"
-            else "$ASSET_PREFIX/ksud/ksud"
+            val dynKsud = if (ksuNext) KsudNextProfiles.selectedFile(context) else KsudClassicProfiles.selectedFile(context)
+            val ksud = if (dynKsud != null && dynKsud.isFile) {
+                dynKsud.readBytes()
+            } else {
+                val ksudAsset = if (ksuNext)
+                    KsudNextProfiles.selectedAsset(context) ?: "$ASSET_PREFIX/ksud/ksud-next"
+                else "$ASSET_PREFIX/ksud/ksud"
+                asset(context, ksudAsset) ?: return fail(reporter, onProgress, "missing ksud asset: $ksudAsset")
+            }
             onProgress(30, "Préparation du ksud en mémoire…")
-            val ksud = asset(context, ksudAsset)
-                ?: return fail(reporter, onProgress, "missing ksud asset: $ksudAsset")
 
             val memfd = n.ksudStageMemfd(ksud)
             if (memfd.isEmpty()) return fail(reporter, onProgress, "ksud memfd stage failed")
             val variant = if (ksuNext) "NEXT" else "CLASSIC"
-            reporter.report("[*] DirtyFrag: ko=${ko.size}B (bundled) ksud=$memfd (${ksud.size}B, $ksudAsset, variant=$variant)\n")
+            reporter.report("[*] DirtyFrag: ko=${ko.size}B (bundled) ksud=$memfd (${ksud.size}B, variant=$variant)\n")
 
             onProgress(42, "Mise en place de la SA IpSec…")
             val loopback = InetAddress.getByName("127.0.0.1")
