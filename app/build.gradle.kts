@@ -6,7 +6,7 @@ plugins {
 }
 
 val appName = "Uni-Root"
-val appVersionName = "5.1.1"
+val appVersionName = "5.1.2"
 
 android {
     namespace = "com.uniroot.app"
@@ -22,9 +22,17 @@ android {
         versionCode = 300
         versionName = appVersionName
     }
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.keystore")
+            storePassword = "uniroot"
+            keyAlias = "uniroot"
+            keyPassword = "uniroot"
+        }
+    }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             signingConfig = signingConfigs.getByName("debug")

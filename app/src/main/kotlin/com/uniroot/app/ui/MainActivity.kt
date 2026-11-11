@@ -889,10 +889,25 @@ class MainActivity : ComponentActivity(), Shizuku.OnRequestPermissionResultListe
                 withContext(Dispatchers.IO) { instant.setHelperEnabled(true) }
                 // (Re)stage the SELECTED profile's own ksud: flipping profiles
                 // + re-enabling switches the flavor that comes back at boot.
-                val usedProfile = engine.profileByName(selectedProfileName)
-                if (!usedProfile?.pathKsud.isNullOrBlank()) {
+                val isNew = newMethod
+                if (isNew) {
+                    val rootFile = File(this@MainActivity.filesDir.parentFile, "ksud")
                     withContext(Dispatchers.IO) {
-                        instant.stageProfileKsud(usedProfile!!.pathKsud, usedProfile.flavor)
+                        runCatching {
+                            df.root.DFBridge.stageKsud(this@MainActivity, ksuNextMode, object : df.root.IReporter {
+                                override fun report(msg: String?) {}
+                            })
+                            if (rootFile.isFile) {
+                                instant.stageProfileKsud(rootFile.absolutePath, if (ksuNextMode) "kernelsu_next" else "kernelsu")
+                            }
+                        }
+                    }
+                } else {
+                    val usedProfile = engine.profileByName(selectedProfileName)
+                    if (!usedProfile?.pathKsud.isNullOrBlank()) {
+                        withContext(Dispatchers.IO) {
+                            instant.stageProfileKsud(usedProfile!!.pathKsud, usedProfile.flavor)
+                        }
                     }
                 }
                 engine.instantRootEnabled = true
@@ -926,16 +941,34 @@ class MainActivity : ComponentActivity(), Shizuku.OnRequestPermissionResultListe
             // helper keeps /data/system/dfreroot-ksud verbatim, so the flavor
             // that comes back at every boot is exactly this profile's flavor
             // (KernelSU or Next), custom profiles included.
-            val usedProfile = engine.profileByName(selectedProfileName)
-            val ksudSrc = usedProfile?.pathKsud
-            if (!ksudSrc.isNullOrBlank()) {
+            val isNew = newMethod
+            if (isNew) {
+                val rootFile = File(this@MainActivity.filesDir.parentFile, "ksud")
                 val staged = withContext(Dispatchers.IO) {
-                    instant.stageProfileKsud(ksudSrc, usedProfile?.flavor ?: "kernelsu")
+                    runCatching {
+                        df.root.DFBridge.stageKsud(this@MainActivity, ksuNextMode, object : df.root.IReporter {
+                            override fun report(msg: String?) {}
+                        })
+                    }
+                    if (rootFile.isFile) instant.stageProfileKsud(rootFile.absolutePath, if (ksuNextMode) "kernelsu_next" else "kernelsu")
+                    else false
                 }
                 instant.record(
-                    if (staged) "[InstantRoot] profile ksud staged to /data/system/dfreroot-ksud ($ksudSrc)"
-                    else "[InstantRoot] profile ksud staging failed — helper will use its bundled fallback",
+                    if (staged) "[InstantRoot] new method ksud staged to /data/system/dfreroot-ksud"
+                    else "[InstantRoot] new method ksud staging failed — helper will use its bundled fallback"
                 )
+            } else {
+                val usedProfile = engine.profileByName(selectedProfileName)
+                val ksudSrc = usedProfile?.pathKsud
+                if (!ksudSrc.isNullOrBlank()) {
+                    val staged = withContext(Dispatchers.IO) {
+                        instant.stageProfileKsud(ksudSrc, usedProfile?.flavor ?: "kernelsu")
+                    }
+                    instant.record(
+                        if (staged) "[InstantRoot] profile ksud staged to /data/system/dfreroot-ksud ($ksudSrc)"
+                        else "[InstantRoot] profile ksud staging failed — helper will use its bundled fallback",
+                    )
+                }
             }
             engine.instantRootSetupStage = RootEngine.INSTANT_STAGE_INJECTED
             // Enabled from THIS moment — it must survive the reboot even if
