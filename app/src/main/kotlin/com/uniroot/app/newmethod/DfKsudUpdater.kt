@@ -298,12 +298,6 @@ object DfKsudUpdater {
             "OK: $tag patched -> classic profile '$niceName'"
         } else {
             val profileId = niceName
-            if (alreadyUpdatedNext(context, profileId)) {
-                progress(100, "you are already updated")
-                say("you are already updated")
-                say("    ($tag is already patched: profile '$profileId')")
-                return "you are already updated ($tag)"
-            }
             KsudNextProfiles.addDynamic(context, profileId, patched,
                 "official ksud $tag + Samsung KDP+DEFEX kos - patched on device")
             say("[+] Profile '$profileId' created and SELECTED")
